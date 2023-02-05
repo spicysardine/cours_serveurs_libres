@@ -1,0 +1,18 @@
+<!-- MapServer Template -->
+<!DOCTYPE html5>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MapServer Hello World</title>
+</head>
+
+<body>
+	<form method=GET action="/cgi-bin/mapserv">
+		<input type="submit" value="Send" name="Send">
+		<input type='hidden' value='/var/www/html/htdocs/serverGIS/mapserver/mapfiles/newfoundland_raster.map' name='map'>
+	</form>
+	<img src="[img]" width=1920 height=1080 border=0>
+
+</body>
+
+</html>

@@ -1,0 +1,103 @@
+MAP
+	NAME "world"
+	IMAGETYPE PNG
+	#EXTENT 2583077.499 164954.790 10971900.319 5888110.328 # CANADA
+	EXTENT 8326949.713 1828821.505 9158623.125 2401933.818 # NewFoundLand only
+	SIZE 1920 1080
+	DEBUG 5
+	IMAGECOLOR '#4097d9CC'
+	PROJECTION
+		"init=epsg:3348"
+	END
+
+	WEB
+		TEMPLATE  '/var/www/html/htdocs/serverGIS/mapserver/mapweb/world_maptemplate.html'
+		IMAGEPATH '/var/www/html/htdocs/serverGIS/mapserver/maptmp/'
+		IMAGEURL  '/htdocs/serverGIS/mapserver/maptmp/'
+	END
+
+	# raster layer
+	LAYER
+	  NAME "new_found_land"
+	  TYPE RASTER
+	  STATUS default
+	  DATA "PG:host=127.0.0.1 port=5432 sslmode=disable user=beetroot password=root dbname=localbase10 schema=rasters table=newfoundland_relief_pseudocolor_3347 column=rast mode=2"
+	  PROJECTION
+		"init=epsg:3348"
+	  END
+	  CLASS
+		NAME "newfoundland"
+	  END
+	  PROCESSING "CLOSE_CONNECTION=DEFER"
+	END # layer
+
+
+	# Postgis vector layer canada_metropolitan_areas
+	LAYER
+		NAME "canada_metropolitan_areas"
+		STATUS DEFAULT
+		TYPE polygon
+		CONNECTIONTYPE POSTGIS
+		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+		DATA "geom from geography.canada_metropolitan_areas USING UNIQUE id"
+		PROJECTION
+		"init=epsg:4326"
+		END
+		CLASS
+			NAME "canada_metropolitan_areas"
+			STYLE
+				WIDTH .5
+				OUTLINECOLOR 0 0 255
+				COLOR '#ce5c00CC'
+			END
+		END
+	END
+
+
+	# Postgis vector layer
+	LAYER
+		NAME "canada_lakes_rivers_3347"
+		STATUS DEFAULT
+		TYPE polygon
+		CONNECTIONTYPE POSTGIS
+		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+		DATA "geom from geography.canada_lakes_rivers_3347 USING UNIQUE id"
+		PROJECTION
+		"init=epsg:3347"
+		END
+		CLASS
+			NAME "world"
+			STYLE
+				WIDTH .5
+				OUTLINECOLOR 0 0 255
+				COLOR '#0028deCC'
+			END
+		END
+	END
+
+
+	# Postgis vector layer canada_population_centers
+	LAYER
+		NAME "canada_population_centers"
+		STATUS DEFAULT
+		TYPE polygon
+		CONNECTIONTYPE POSTGIS
+		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+		DATA "geom from geography.canada_population_centers USING UNIQUE id"
+		PROJECTION
+		"init=epsg:4326"
+		END
+		CLASS
+			NAME "canada_population_centers"
+			STYLE
+				WIDTH .5
+				OUTLINECOLOR 0 0 255
+				COLOR '#c937a6'
+			END
+		END
+	END
+
+
+
+
+END
