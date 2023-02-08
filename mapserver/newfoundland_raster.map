@@ -21,7 +21,7 @@ MAP
 	  NAME "new_found_land"
 	  TYPE RASTER
 	  STATUS default
-	  DATA "PG:host=127.0.0.1 port=5432 sslmode=disable user=beetroot password=root dbname=localbase10 schema=rasters table=newfoundland_relief_pseudocolor_3347 column=rast mode=2"
+	  DATA "PG:host=127.0.0.1 port=5432 sslmode=disable  dbname=localbase10 schema=rasters table=newfoundland_relief_pseudocolor_3347 column=rast mode=2"
 	  PROJECTION
 		"init=epsg:3348"
 	  END
@@ -38,7 +38,7 @@ MAP
 		STATUS DEFAULT
 		TYPE polygon
 		CONNECTIONTYPE POSTGIS
-		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 "
 		DATA "geom from geography.canada_metropolitan_areas USING UNIQUE id"
 		PROJECTION
 		"init=epsg:4326"
@@ -60,7 +60,7 @@ MAP
 		STATUS DEFAULT
 		TYPE polygon
 		CONNECTIONTYPE POSTGIS
-		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 "
 		DATA "geom from geography.canada_lakes_rivers_3347 USING UNIQUE id"
 		PROJECTION
 		"init=epsg:3347"
@@ -82,7 +82,7 @@ MAP
 		STATUS DEFAULT
 		TYPE polygon
 		CONNECTIONTYPE POSTGIS
-		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 "
 		DATA "geom from geography.canada_population_centers USING UNIQUE id"
 		PROJECTION
 		"init=epsg:4326"
