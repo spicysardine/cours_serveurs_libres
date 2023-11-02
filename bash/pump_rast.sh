@@ -35,6 +35,9 @@ gdalbuildvrt canada.vrt *hgt
 # noter que les fichiers MNT SRTM ne sont pas projetés
 gdalwarp -t_srs EPSG:3348 -r bilinear canada.vrt canada.tif
 
+# Obtenir des informations sur le fichier
+gdalinfo -mm canada.tif
+
 # Génération du fichier hillshade (reliefs ombragés)
 gdaldem hillshade -of GTIFF -az 315 canada.tif canada_hillshade.tif
 
