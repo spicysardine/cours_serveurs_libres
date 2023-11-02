@@ -68,6 +68,9 @@ man shp2pgsql
 
 # insertion d’un shape avec shp2pgsql si la projection d’origine est en WGS84 
 # et l’encodage système est en UTF8 (changer en accordance car les shape sont en LATIN1 par défaut)
+# -s: spécifier le CSRS
+# -I: mettre en place un index
+# -W: système d’encodage
 shp2pgsql -s 4326 -I -W 'UTF8' nom_du_shape.shp | psql -d nom_de_base
 
 # insertion d’un shape avec shp2pgsql si la projection d’origine est en WGS84 
@@ -83,6 +86,12 @@ shp2pgsql -s 4326:3348 -I -W 'UTF8' nom_du_shape.shp geography.nouveau_nom_du_sh
 
 # insertion d’un fichier raster en WGS84 dans la BDD à l’aide de raster2pgsql
 # avec tuilage automatique
+# -s: spécifier le CSRS
+# -I: mettre en place un index
+# -M: accompagner d’un vacuum pour ganger en espace de stockage
+# -C: ajouter des contraintes de type sur la colonne raster dans la BDD
+# -F: mettre l’intitulé du fichier comme nom de la colonne
+# -t: spécifier les dimensions du tuilage tuilage
 raster2pgsql -s 4326 -I -M -C -F -t auto nom_du_raster.tif | psql -d nom_de_base
 
 # insertion d’un fichier raster en WGS84 dans la BDD à l’aide de raster2pgsql
