@@ -1,0 +1,12 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+*.tif
+*.zip
+*.hgt
+*.tar.xz
+
+bash/canada_raster
+geodata/*
