@@ -9,13 +9,13 @@ COLUMNS=($(seq 10 26))
 ROWS=($(seq 1 4))
 
 ##Méthode séquencielle (classique):
-#for row in ${ROWS[@]}
-#do
-#	for column in ${COLUMNS[@]};
-#	do
-#		wget --no-check-certificate "${URL}/srtm_${column}_0${row}.zip" 2> out.log;
-#	done
-#done
+for row in ${ROWS[@]}
+do
+	for column in ${COLUMNS[@]};
+	do
+		wget --no-check-certificate "${URL}/srtm_${column}_0${row}.zip" 2> out.log;
+	done
+done
 
 
 #Méthode parallèle:
@@ -36,19 +36,19 @@ gdalbuildvrt canada.vrt *tif
 gdalwarp -t_srs EPSG:3348 -r bilinear canada.vrt canada.tif 
 
 ## Obtenir des informations sur le fichier
-#gdalinfo -mm canada.tif
+gdalinfo -mm canada.tif
 
 ## Génération du fichier hillshade (reliefs ombragés)
 gdaldem hillshade -of GTIFF -az 315 -alt 45 canada.tif canada_hillshade.tif
 
 ## Génération du fichier de reliefs colorés color-relief
-gdaldem color-relief canada.tif color_relief.txt canada_color_relief.tif
+gdaldem color-relief canada.tif color_relief.txt -alpha canada_color_relief.tif
 
 ## Génération du fichier de pente
 gdaldem slope canada.tif canada_slope.tif
 
 ## Génération du fichier de pente coloré
-gdaldem color-relief -of GTIFF canada_slope.tif color_slope.txt canada_slopeshade.tif
+gdaldem color-relief -of GTIFF canada_slope.tif color_slope.txt -alpha canada_slopeshade.tif
 
 
 

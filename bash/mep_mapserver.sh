@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # installer mapserver
-sudo apt install cgi-mapserver mapserver-bin
+sudo apt install cgi-mapserver mapserver-bin php apache2
 
 # activer le module cgi du serveur web apache
 sudo a2enmod cgi 
