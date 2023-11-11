@@ -9,4 +9,4 @@
 *.tar.xz
 
 bash/canada_raster
-geodata/*
+geo_data/*
