@@ -70,6 +70,8 @@ gdaldem slope -of GTIFF canada.tif canada_slope.tif
 
 gdaldem color-relief -of GTIFF canada.tif color_relief.txt -alpha canada_color_relief.tif
 
+# calcul de la couche de relief colorée
+gdal_calc -A canada_color_relief.tif --allBands=A -H canada_hillsade.tif --type=Byte --outfile=color_shaded_relief.tif --calc='A*(H/255)'
 
 
 
