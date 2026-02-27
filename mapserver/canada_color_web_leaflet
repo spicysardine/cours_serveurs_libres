@@ -1,0 +1,27 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Leaflet and MapServer WMS</title>
+  <link rel='stylesheet' href='map_style.css'/>
+  
+<!--  <link rel="stylesheet" href="leaflet_sl/leaflet.css" />-->
+<!--  <script src="leaflet_sl/leaflet.js" ></script>-->
+<!--  <!-- Then your UMD plugin build -->
+<!--  <script src="./dist/leaflet.tilelayer.wmts.min.js"></script>-->
+
+
+
+
+</head>
+<body>
+
+<div id="main_map_division"></div>
+
+</body>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-tilelayer-wmts@1.0.1/leaflet-tilelayer-wmts.js"></script>
+  <script src="canada_color.js" ></script>
+</html>
