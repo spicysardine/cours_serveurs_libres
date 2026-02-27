@@ -3,6 +3,8 @@
 .RData
 .Ruserdata
 
+*.tiff
+*.gtiff
 *.tif
 *.zip
 *.hgt
