@@ -1,0 +1,158 @@
+MAP
+	NAME "canada_wmts"
+	IMAGETYPE PNG24
+	EXTENT -20037508.3427892 -20037508.3427892 20037508.3427892 20037508.3427892 # world webmercator
+#	EXTENT -16771439.285 3685908.646 -3767831.687 10172409.571 # canada webmercator
+#	SIZE 1280 720
+#	SIZE 1920 1080
+#	SIZE 2160 1440
+	SIZE 3840 2160
+	DEBUG 1
+	PROJECTION
+		"init=epsg:3857"
+	END
+	UNITS METERS
+
+	OUTPUTFORMAT
+		NAME "png"
+		DRIVER "AGG/PNG"
+		MIMETYPE "image/png"
+		IMAGEMODE RGBA
+	END
+
+	WEB
+		TEMPLATE  '/var/www/html/htdocs/serverGIS/mapserver/mapweb/canada_color.html'
+		IMAGEPATH '/var/www/html/htdocs/serverGIS/mapserver/maptmp/' # filesystem path
+		IMAGEURL  '/htdocs/serverGIS/mapserver/maptmp/'              # web browser path
+		# Activate the layer as a WMS
+		METADATA
+			"wms_title" "WMS_CANADA_RASTER"
+			"wms_srs"   "EPSG:3857"
+			"wms_enable_request" "*"
+			"wms_onlineresource"   "http://127.0.0.1/mapcache/"
+		END
+	END
+
+	LAYER
+		NAME 'canada_raster'
+		DATA '/mnt/P5_NVMe_1TB/raster_canada_serveurs_libre/canada_rasters/canada_shaded_color_relief_web.tif'
+		STATUS ON
+		TYPE RASTER
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=AVERAGE"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "canada_shaded_colors_wms"
+		END
+	END
+
+#	LAYER
+#		NAME "canada_borders"
+#		STATUS ON
+#		TYPE polygon
+#		DEBUG 0
+#		CONNECTIONTYPE POSTGIS
+#		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+#		DATA "geom from geography.canada_web USING UNIQUE id"
+#		PROJECTION
+#		"init=epsg:3857"
+#		END
+#		CLASS
+#			NAME "canada_borders"
+#			STYLE
+#				COLOR "#1a5fb4"
+#				OPACITY 1
+#			END
+#			STYLE
+#				OUTLINECOLOR "#283ebd"
+#				WIDTH 1
+#			END
+#		END
+#		METADATA
+#			"wms_title" "canada_borders_wms"
+#		END
+#	END
+
+
+#	# Postgis vector layer canada_metropolitan_areas
+#	LAYER
+#		NAME "canada_metropolitan_areas"
+#		STATUS ON
+#		TYPE polygon
+#		DEBUG 0
+#		CONNECTIONTYPE POSTGIS
+#		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+#		DATA "geom from geography.canada_metropolitan_areas_web USING UNIQUE id"
+#		PROJECTION
+#		"init=epsg:3857"
+#		END
+#		CLASS
+#			NAME "canada_metropolitan_areas"
+#			STYLE
+#				WIDTH .5
+#				COLOR '#ce5c00AA'
+#				OUTLINECOLOR 0 0 255
+#			END
+#		END
+#		METADATA
+#			"wms_title" "canada_metropolitan_areas_wms"
+#		END
+#	END
+
+#	LAYER
+#		NAME "canada_lakes_rivers"
+#		STATUS ON
+#		TYPE polygon
+#		DEBUG 0
+#		CONNECTIONTYPE POSTGIS
+#		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+#		DATA "geom from geography.canada_lakes_rivers_web USING UNIQUE id"
+#		PROJECTION
+#		"init=epsg:3857"
+#		END
+#		CLASS
+#			NAME "lakes"
+#			STYLE
+#				WIDTH .3
+#				OUTLINECOLOR '#000000'
+#				COLOR '#0074d9CC'
+#			END
+#		END
+#		METADATA
+#			"wms_title" "canada_lakes_rivers_wms"
+#		END
+#	END
+
+#	# Postgis vector layer canada_population_centers
+#	LAYER
+#		NAME "canada_population_centers"
+#		STATUS ON
+#		TYPE polygon
+#		DEBUG 0
+#		CONNECTIONTYPE POSTGIS
+#		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+#		DATA "geom from geography.canada_population_centers_web USING UNIQUE id"
+#		PROJECTION
+#		"init=epsg:3857"
+#		END
+#		CLASS
+#			NAME "canada_population_centers"
+#			STYLE
+#				WIDTH .5
+#				OUTLINECOLOR 51 51 51
+#				COLOR '#9a9996EE'
+#			END
+#		END
+#		METADATA
+#			"wms_title" "canada_population_centers_wms"
+#		END
+#	END
+
+END
