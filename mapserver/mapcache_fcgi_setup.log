@@ -1,0 +1,598 @@
+#Documentation on properly setting up an Apache2 Mapserver and :apcache powerd tile server.
+
+#check the current setup:
+apachectl -M
+
+#Install the necessary packages:
+sudo apt install spawn-fcgi libapache2-mod-fcgid mapcache-cgi mapcache-tools
+
+#look for cgi_module. If present fcgi needs to be enabled
+#legacy cgi can stay enabled but should not be used for tile server or mapcache workload
+#check which MPM mode is active mpm_event or mpm_prefork
+#if mpm_prefork is active disable it and disable mod_php8.4
+sudo a2dismod mpm_prefork
+sudo a2dismod php8.4
+sudo a2disconf php8.4-cgi
+#install php8.4-fpm (Fast Process Manager) and enable it
+sudo a2enmod mpm_event
+sudo a2enconf php8.4-fpm
+
+#disable apache2 mapcache module
+sudo a2dismod mapcache
+
+#disable legacy mapcache configuration if present
+sudo a2disconf mapcache
+
+# restart apache2
+sudo systemctl restart apache2
+
+#Enable Required Apache Modules
+sudo a2enmod proxy
+sudo a2enmod proxy_fcgi
+sudo a2enmod setenvif
+sudo systemctl restart apache2
+
+#Step 3: Configure FastCGI Processes for MapCache
+#We will use systemd to manage FastCGI processes persistently.
+#Create a systemd service file for MapCache FastCGI:
+
+sudo nano /etc/systemd/system/mapcache-fcgi.service
+
+#Add:
+
+[Unit]
+Description=MapCache FastCGI Server
+After=network.target
+
+[Service]
+User=root
+Group=www-data
+ExecStart=/usr/bin/spawn-fcgi -F 8 -s /run/mapcache.sock -U www-data -G www-data -- /usr/lib/cgi-bin/mapcache
+Environment="MAPCACHE_CONFIG_FILE=/etc/mapcache/mapcache.xml"
+Type=forking
+Restart=always
+RestartSec=5
+StartLimitBurst=10
+#KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+
+#Then
+sudo systemctl daemon-reload
+sudo systemctl enable mapcache-fcgi
+sudo systemctl start mapcache-fcgi
+
+#Check if your installed mapserver-bin or cgi-mapserver was built with FastCGI:
+/usr/lib/cgi-bin/mapserv --version | grep -i fastcgi
+#Look for SUPPORTS=FASTCGI.
+
+#Create a new service file /etc/systemd/system/mapserver-fcgi.service:
+
+[Unit]
+Description=MapServer FastCGI Backend
+After=network.target
+
+[Service]
+User=root
+ExecStart=/usr/bin/spawn-fcgi -F 8 -s /run/mapserver.sock -U www-data -G www-data -- /usr/lib/cgi-bin/mapserv
+Type=forking
+Restart=always
+RestartSec=5
+Environment="MAPSERVER_CONFIG_FILE=/etc/mapserver.conf"
+
+[Install]
+WantedBy=multi-user.target
+
+
+sudo systemctl daemon-reload
+sudo systemctl enable mapserver-fcgi
+sudo systemctl start mapserver-fcgi
+
+
+#-F 6: Tune based on CPU cores (start with 4–12; MapServer benefits from multiple workers for concurrent rendering).
+#Use /run/mapserver.sock (distinct from MapCache socket).
+#Run as root for socket creation, drop to www-data for workers.
+
+#Update MapCache Configuration
+#In /etc/mapcache/mapcache.xml, change the WMS source to point
+# to the new FastCGI endpoint instead of the CGI one:
+#<source name="canada_raster_wmts" type="wms">
+#  <http>
+##    <!-- Replace old CGI URL with FastCGI socket via proxy or direct fcgi call -->
+#    <url>http://localhost/mapserv.fcgi?</url> 
+##     <!-- or use internal fcgi if supported -->
+#  </http>
+#  <getmap>
+#    <params>
+#      <FORMAT>image/png</FORMAT>
+#      <LAYERS>canada_raster</LAYERS>
+#      <MAP>/var/www/html/htdocs/serverGIS/mapserver/mapfiles/canada_color_web_wmts.map</MAP>
+#    </params>
+#  </getmap>
+#</source>
+
+#The <Location> block should not be placed arbitrarily — its exact location in 
+#the Apache configuration is important for correct behavior, proper directive merging, and avoiding conflicts with other rules.
+#Here is the precise and recommended placement: Recommended Location (Best Practice)
+#Add this block inside the dedicated MapCache configuration file
+#File: /etc/apache2/conf-available/mapcache-fcgi.conf
+#Placement: Inside the existing <IfModule proxy_fcgi_module> container,
+#preferably near the existing MapCache proxy rules.
+#Example of the complete file after adding the MapServer backend proxy:
+<IfModule proxy_fcgi_module>
+
+    <Directory /usr/lib/cgi-bin>
+        Options +ExecCGI
+        Require all granted
+    </Directory>
+
+    <Location "/mapcache">
+        SetHandler proxy:unix:/run/mapcache.sock|fcgi://localhost/
+    </Location>
+
+    # ────────────────────────────────────────────────────────────────
+    # MapServer FastCGI backend (new addition for MapCache to use)
+    # ────────────────────────────────────────────────────────────────
+    <Location "/mapserv.fcgi">
+        SetHandler proxy:unix:/run/mapserver.sock|fcgi://localhost/
+    </Location>
+
+    # Or alternatively:
+    # ProxyPass /mapcache unix:/run/mapcache.sock|fcgi://localhost/ nocanon
+    # ProxyPassReverse /mapcache unix:/run/mapcache.sock|fcgi://localhost/
+</IfModule>
+
+#Why this location is preferred?
+#Keeps all FastCGI proxy rules for this tile service in one logical file.
+#Makes it easy to enable/disable the entire setup with a2enconf / a2disconf.
+#Avoids polluting virtual host files (000-default.conf, site-specific vhosts) with backend-specific logic.
+#Ensures the rule is applied consistently across all virtual hosts that include this conf file 
+#(if you later add Include /etc/apache2/conf-available/mapcache.conf in other <VirtualHost> blocks).
+
+#refresh the services list
+sudo systemctl daemon-reload
+#restart apache2
+sudo systemctl restart apache2
+
+
+
+# verify and test:
+#You should see 8 mapcache processes running continuously.
+ps aux | grep mapcache
+# if it fails pkill mapcache
+
+watch -n1 "ps aux | grep mapcache"
+
+#If PIDs stay the same → FastCGI is working.
+#If processes constantly appear/disappear → still CGI.
+
+#Architecture After Migration
+#Browser
+#↓
+#Apache (mpm_event threads)
+#↓
+#MapCache FastCGI (persistent workers)
+#↓
+#Disk cache
+#↓ (miss)
+#MapServer FastCGI
+#This is correct production architecture.
+
+################################## working mapserver.conf file ##########################
+CONFIG
+
+  ENV
+    # don’t allow arbitrary map path loading
+    #MS_MAP_NO_PATH "true"                          
+    # only allow map files in this directory
+    #MS_MAP_PATTERN "^/var/www/html/htdocs/serverGIS/mapserver/mapfiles/.*\.map$"
+    MS_MAP_PATTERN "^/var/www/html/htdocs/.*\.map$"
+    # default debug verbosity
+    MS_DEBUGLEVEL "2"
+    #MS_VERBOSE "false"
+    # Log file
+    MS_ERRORFILE "/var/log/mapserver/mapserver_errors.log"
+  END
+
+
+  #
+  # Map aliases:
+  # if MS_MAP_NO_PATH "true" then the map is ONLY accessed via:
+  # http://localhost/cgi-bin/mapserv?map=MAIN
+  # where MAIN is the name of the alias.
+  # Otherwise it accessible with or without alias
+  MAPS
+    MAIN                   "/var/www/html/htdocs/serverGIS/mapserver/mapfiles/hello.map"
+    CANADA_COLOR           "/var/www/html/htdocs/serverGIS/mapserver/mapfiles/canada_color.map"
+    CANADA_COLOR_WEB       "/var/www/html/htdocs/serverGIS/mapserver/mapfiles/canada_color_web.map"
+    CANADA_COLOR_WEB_WMTS  "/var/www/html/htdocs/serverGIS/mapserver/mapfiles/canada_color_web_wmts.map"
+  END
+
+	ENV
+		GDAL_NUM_THREADS '12' #"ALL_CPUS"
+		GDAL_CACHEMAX "4096"
+	END
+
+END
+
+
+################################## working mapcache.xml ##################################
+<?xml version="1.0" encoding="UTF-8"?>
+<mapcache>
+
+  <source name="canada_raster_wmts" type="wms">
+    <getmap>
+      <params>
+        <FORMAT>image/png</FORMAT>
+        <LAYERS>canada_raster</LAYERS>
+        <MAP>/var/www/html/htdocs/serverGIS/mapserver/mapfiles/canada_color_web_wmts.map</MAP>
+      </params>
+    </getmap>
+    <http>
+      <url>http://localhost/mapserv.fcgi?</url>
+    </http>
+  </source>
+
+  <source name="canada_borders" type="wms">
+    <getmap>
+      <params>
+        <FORMAT>image/png</FORMAT>
+        <LAYERS>canada_borders</LAYERS>
+        <MAP>/var/www/html/htdocs/serverGIS/mapserver/mapfiles/canada_color_web_wmts.map</MAP>
+      </params>
+    </getmap>
+    <http>
+      <url>http://localhost/mapserv.fcgi?</url>
+    </http>
+  </source>
+
+  <source name="canada_metropolitan_areas" type="wms">
+    <getmap>
+      <params>
+        <FORMAT>image/png</FORMAT>
+        <LAYERS>canada_metropolitan_areas</LAYERS>
+        <MAP>/var/www/html/htdocs/serverGIS/mapserver/mapfiles/canada_color_web_wmts.map</MAP>
+      </params>
+    </getmap>
+    <http>
+      <url>http://localhost/mapserv.fcgi?</url>
+    </http>
+  </source>
+
+  <source name="canada_lakes_rivers" type="wms">
+    <getmap>
+      <params>
+        <FORMAT>image/png</FORMAT>
+        <LAYERS>canada_lakes_rivers</LAYERS>
+        <MAP>/var/www/html/htdocs/serverGIS/mapserver/mapfiles/canada_color_web_wmts.map</MAP>
+      </params>
+    </getmap>
+    <http>
+      <url>http://localhost/mapserv.fcgi?</url>
+    </http>
+  </source>
+
+  <source name="canada_population_centers" type="wms">
+    <getmap>
+      <params>
+        <FORMAT>image/png</FORMAT>
+        <LAYERS>canada_population_centers</LAYERS>
+        <MAP>/var/www/html/htdocs/serverGIS/mapserver/mapfiles/canada_color_web_wmts.map</MAP>
+      </params>
+    </getmap>
+    <http>
+      <url>http://localhost/mapserv.fcgi?</url>
+    </http>
+  </source>
+
+
+
+  <cache name="disk_cache" type="disk">
+    <base>/mnt/P5_NVMe_1TB/raster_canada_serveurs_libre/canada_rasters/canada_cache</base>
+<!--    <symlink_blank/>-->
+  </cache>
+
+
+  <grid name="canada_3857">
+    <srs>EPSG:3857</srs>
+    <!-- Standard Web Mercator world map -->
+    <extent>
+              <!--    mercator world extente-->
+      -20037508.342789244 -20037508.342789244
+       20037508.342789244  20037508.342789244
+              <!--    canada extente-->
+<!--              -16771439.285 3685908.646 -3767831.687 10172409.571-->
+    </extent>
+    <units>m</units>
+    <size>256 256</size>
+    <origin>top-left</origin>
+    <!-- Standard Web Mercator resolutions (zoom 0–18) -->
+  <resolutions>
+    156543.03392804097
+    78271.51696402048
+    39135.75848201024
+    19567.87924100512
+    9783.93962050256
+    4891.96981025128
+    2445.98490512564
+    1222.99245256282
+    611.49622628141
+    305.748113140705
+    152.8740565703525
+    76.43702828517625
+    38.21851414258813
+    19.109257071294063
+    9.554628535647032
+    4.777314267823516
+    2.388657133911758
+    1.194328566955879
+    0.5971642834779395
+  </resolutions>
+  </grid>
+
+
+  <tileset name="canada_raster_wmts">
+    <source>canada_raster_wmts</source>
+    <cache>disk_cache</cache>
+    <grid>canada_3857</grid>
+    <format>PNG</format>
+    <metatile>4 4</metatile>
+    <metabuffer>10</metabuffer>
+  </tileset>
+  
+  <tileset name="canada_borders">
+    <source>canada_borders</source>
+    <cache>disk_cache</cache>
+    <grid>canada_3857</grid>
+    <format>PNG</format>
+    <metatile>4 4</metatile>
+    <metabuffer>10</metabuffer>
+  </tileset>
+
+  <tileset name="canada_metropolitan_areas">
+    <source>canada_metropolitan_areas</source>
+    <cache>disk_cache</cache>
+    <grid>canada_3857</grid>
+    <format>PNG</format>
+    <metatile>4 4</metatile>
+    <metabuffer>10</metabuffer>
+  </tileset>
+
+  <tileset name="canada_lakes_rivers">
+    <source>canada_lakes_rivers</source>
+    <cache>disk_cache</cache>
+    <grid>canada_3857</grid>
+    <format>PNG</format>
+    <metatile>4 4</metatile>
+    <metabuffer>10</metabuffer>
+  </tileset>
+
+  <tileset name="canada_population_centers">
+    <source>canada_population_centers</source>
+    <cache>disk_cache</cache>
+    <grid>canada_3857</grid>
+    <format>PNG</format>
+    <metatile>4 4</metatile>
+    <metabuffer>10</metabuffer>
+  </tileset>
+
+  <service type="tms"  enabled="true"/>
+  <service type="wmts" enabled="true"/>
+</mapcache>
+
+
+################################# working mapfile in wms/wmts mode #################################
+MAP
+	NAME "canada_wmts"
+	IMAGETYPE PNG24
+	EXTENT -20037508.3427892 -20037508.3427892 20037508.3427892 20037508.3427892 # world webmercator
+#	EXTENT -16771439.285 3685908.646 -3767831.687 10172409.571 # canada webmercator
+#	SIZE 1280 720
+#	SIZE 1920 1080
+#	SIZE 2160 1440
+	SIZE 3840 2160
+	DEBUG 1
+	PROJECTION
+		"init=epsg:3857"
+	END
+	UNITS METERS
+
+	OUTPUTFORMAT
+		NAME "png"
+		DRIVER "AGG/PNG"
+		MIMETYPE "image/png"
+		IMAGEMODE RGBA
+	END
+
+	WEB
+		TEMPLATE  '/var/www/html/htdocs/serverGIS/mapserver/mapweb/canada_color.html'
+		IMAGEPATH '/var/www/html/htdocs/serverGIS/mapserver/maptmp/' # filesystem path
+		IMAGEURL  '/htdocs/serverGIS/mapserver/maptmp/'              # web browser path
+		# Activate the layer as a WMS
+		METADATA
+			"wms_title" "WMS_CANADA_RASTER"
+			"wms_srs"   "EPSG:3857"
+			"wms_enable_request" "*"
+			"wms_onlineresource"   "http://127.0.0.1/mapcache/"
+		END
+	END
+
+	LAYER
+		NAME 'canada_raster'
+		DATA '/mnt/P5_NVMe_1TB/raster_canada_serveurs_libre/canada_rasters/canada_shaded_color_relief_web.tif'
+		STATUS ON
+		TYPE RASTER
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=AVERAGE"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "canada_shaded_colors_wms"
+		END
+	END
+
+	LAYER
+		NAME "canada_borders"
+		STATUS ON
+		TYPE polygon
+		DEBUG 0
+		CONNECTIONTYPE POSTGIS
+		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+		DATA "geom from geography.canada_web USING UNIQUE id"
+		PROJECTION
+		"init=epsg:3857"
+		END
+		CLASS
+			NAME "canada_borders"
+			STYLE
+				COLOR "#1a5fb4"
+				OPACITY 1
+			END
+			STYLE
+				OUTLINECOLOR "#283ebd"
+				WIDTH 1
+			END
+		END
+		METADATA
+			"wms_title" "canada_borders_wms"
+		END
+	END
+
+
+	# Postgis vector layer canada_metropolitan_areas
+	LAYER
+		NAME "canada_metropolitan_areas"
+		STATUS ON
+		TYPE polygon
+		DEBUG 0
+		CONNECTIONTYPE POSTGIS
+		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+		DATA "geom from geography.canada_metropolitan_areas_web USING UNIQUE id"
+		PROJECTION
+		"init=epsg:3857"
+		END
+		CLASS
+			NAME "canada_metropolitan_areas"
+			STYLE
+				OUTLINECOLOR '#5e5c64'
+				WIDTH .5
+			END
+			STYLE
+				COLOR '#ce5c00AA'
+				OPACITY 85
+			END
+		END
+		METADATA
+			"wms_title" "canada_metropolitan_areas_wms"
+		END
+	END
+
+	LAYER
+		NAME "canada_lakes_rivers"
+		STATUS ON
+		TYPE polygon
+		DEBUG 0
+		CONNECTIONTYPE POSTGIS
+		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+		DATA "geom from geography.canada_lakes_rivers_web USING UNIQUE id"
+		PROJECTION
+		"init=epsg:3857"
+		END
+		CLASS
+			NAME "lakes"
+			STYLE
+				WIDTH .3
+				OUTLINECOLOR '#000000'
+				COLOR '#0074d9CC'
+			END
+		END
+		METADATA
+			"wms_title" "canada_lakes_rivers_wms"
+		END
+	END
+
+	# Postgis vector layer canada_population_centers
+	LAYER
+		NAME "canada_population_centers"
+		STATUS ON
+		TYPE polygon
+		DEBUG 0
+		CONNECTIONTYPE POSTGIS
+		CONNECTION "host=127.0.0.1 port=5432 dbname=localbase10 user=beetroot password=root"
+		DATA "geom from geography.canada_population_centers_web USING UNIQUE id"
+		PROJECTION
+		"init=epsg:3857"
+		END
+		CLASS
+			NAME "canada_population_centers"
+			STYLE
+				COLOR '#9a9996EE'
+				OPACITY 75
+			END
+			STYLE
+				OUTLINECOLOR 51 51 51
+				WIDTH .5
+			END
+		END
+		METADATA
+			"wms_title" "canada_population_centers_wms"
+		END
+	END
+
+END
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
