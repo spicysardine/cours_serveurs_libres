@@ -17,7 +17,7 @@ sudo a2disconf php8.4-cgi
 sudo a2enmod mpm_event
 sudo a2enconf php8.4-fpm
 
-#disable apache2 mapcache module
+#disable apache2 mapcache module if enabled
 sudo a2dismod mapcache
 
 #disable legacy mapcache configuration if present
@@ -69,6 +69,8 @@ sudo systemctl start mapcache-fcgi
 
 #Create a new service file /etc/systemd/system/mapserver-fcgi.service:
 
+sudo nano /etc/systemd/system/mapserver-fcgi.service
+
 [Unit]
 Description=MapServer FastCGI Backend
 After=network.target
@@ -113,7 +115,7 @@ sudo systemctl start mapserver-fcgi
 #</source>
 
 #The <Location> block should not be placed arbitrarily — its exact location in 
-#the Apache configuration is important for correct behavior, proper directive merging, and avoiding conflicts with other rules.
+#the Apache configuration and is important for correct behavior, proper directive merging, and avoiding conflicts with other rules.
 #Here is the precise and recommended placement: Recommended Location (Best Practice)
 #Add this block inside the dedicated MapCache configuration file
 #File: /etc/apache2/conf-available/mapcache-fcgi.conf
@@ -152,7 +154,10 @@ sudo systemctl start mapserver-fcgi
 
 #refresh the services list
 sudo systemctl daemon-reload
+# activate the conf
+a2enconf mapcache-fcgi
 #restart apache2
+sudo systemctl reload apache2
 sudo systemctl restart apache2
 
 #http://localhost/mapcache/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&styles=default
