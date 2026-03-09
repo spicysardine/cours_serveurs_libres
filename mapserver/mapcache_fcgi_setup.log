@@ -155,6 +155,7 @@ sudo systemctl daemon-reload
 #restart apache2
 sudo systemctl restart apache2
 
+#http://localhost/mapcache/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&styles=default
 
 
 # verify and test:
