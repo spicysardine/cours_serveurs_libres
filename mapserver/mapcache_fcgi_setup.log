@@ -4,15 +4,16 @@
 apachectl -M
 
 #Install the necessary packages:
-sudo apt install spawn-fcgi libapache2-mod-fcgid mapcache-cgi mapcache-tools
+sudo apt install spawn-fcgi libapache2-mod-fcgid mapcache-cgi mapcache-tools php8.4-fpm
 
 #look for cgi_module. If present fcgi needs to be enabled
 #legacy cgi can stay enabled but should not be used for tile server or mapcache workload
 #check which MPM mode is active mpm_event or mpm_prefork
 #if mpm_prefork is active disable it and disable mod_php8.4
-sudo a2dismod mpm_prefork
+#in order
 sudo a2dismod php8.4
 sudo a2disconf php8.4-cgi
+sudo a2dismod mpm_prefork
 #install php8.4-fpm (Fast Process Manager) and enable it
 sudo a2enmod mpm_event
 sudo a2enconf php8.4-fpm
