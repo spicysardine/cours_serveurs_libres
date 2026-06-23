@@ -11,7 +11,7 @@ shopt -s extglob
 # Script de Préparation de grands GeoTIFF  
 # Pour le déployemnt de MapServer / MapCache
 # Khaldoune Hilami. 12/06/2026
-# @: khilami@bouyguestelecom.fr 
+# @:  
 #########################################
 # Usage:
 # ./prep_rast.sh
