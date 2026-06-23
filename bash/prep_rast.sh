@@ -1,32 +1,34 @@
 #!/bin/bash
 
 #########################################
-# options de débuggage
+# options de debuggage
 set -euo pipefail # -x activer pour plus de debug
 
-# options de glob étendu
+# options de glob etendu
 shopt -s extglob
 
-#########################################
-# Script de Préparation de grands GeoTIFF  
-# Pour le déployemnt de MapServer / MapCache
+###########################################
+# Script de Preparation de grands GeoTIFF
+# Pour le deployement de MapServer/MapCache
 # Khaldoune Hilami. 12/06/2026
-# @:  
-#########################################
+# @: email@here.com
+###########################################
 # Usage:
 # ./prep_rast.sh
 #
 # Example:
 # ./prep_rast.sh
-#########################################
+###########################################
 
 # variables et configuration I/O:
 WORKDIR=$(pwd)
 SRS_OUT=3857
+DATA_DIR='IGN_DATA'
+RASTER_DIR='IGN_REGIONS'
 REGION='IDF'
+INDEX_DIR="${RASTER_DIR}/${REGION}/${REGION}_TILEINDEX"
 BASENAME=$REGION
-TILE_INDEX="${BASENAME}.shp"
-INPUT_VRT="${BASENAME}.vrt"
+INPUT_VRT="${INDEX_DIR}/${BASENAME}.vrt"
 MAIN_SPLIT=01
 
 # variables de controle de flux:
@@ -35,11 +37,11 @@ DEPTS=(75)
 ZOOM_LEVELS=($(printf " %02d" {8..19}))
 
 # reproject the index:
-INDEX='staged_idf.shp'
-INDEX_buffered='staged_idf_buffered.shp'
-INDEX_3857='staged_idf_3857.shp'
+INDEX="${INDEX_DIR}/staged_idf.shp"
+INDEX_buffered="${INDEX_DIR}/staged_idf_buffered.shp"
+INDEX_3857="${INDEX_DIR}/staged_idf_3857.shp"
+TILEINDEX="${INDEX_DIR}/${REGION}_TILEINDEX.shp"
 BUFFER=50
-TILEINDEX="${REGION}_TILEINDEX.shp"
 
 
 # configuration GDAL
@@ -49,16 +51,30 @@ COMPRESS_LEVEL=7
 PREDICTOR=2
 N_PROC=$(nproc)
 BLOCKSIZE=512
-WARP_MEMORY=2024
-JOBS=4
+WARP_MEMORY=1024
+JOBS=20
 
-export RESAMPLE_ALGO COMPRESS_ALGO COMPRESS_LEVEL 
+export RESAMPLE_ALGO COMPRESS_ALGO COMPRESS_LEVEL INDEX_DIR
 export PREDICTOR BLOCKSIZE WARP_MEMORY N_PROC JOBS
 
-# création d'un répertoir par région:
-# désarchiver la donnée raster IGN
+
+###################################### functions ############################################
+
+function download_zip(){
+    # telechargement des archives IGN
+	SPLITS=$(printf "%02d" {1..10})
+	for SPLIT in ${SPLITS[@]}
+	do
+		DEPARTEMENT=$(printf "%02d" $DEP)
+		
+	done;
+
+}
+
+# fonction de creation d'un repertoir par region:
+# desarchiver la donnee raster IGN
 function unzip_rasters(){
-	# désarchiver les rasters IGN:
+	# desarchiver les rasters IGN:
 	for DEP in ${DEPTS[@]}
 	do
 		DEPARTEMENT=$(printf "%02d" $DEP)
@@ -66,23 +82,18 @@ function unzip_rasters(){
 		for ZOOM_LEVEL in ${ZOOM_LEVELS[@]}
 		do
 			ZOOM_FOLDER=ZOOM_$ZOOM_LEVEL
-			mkdir -p ./$REGION/$DEPARTEMENT/$ZOOM_FOLDER
-			zip=PLANIGN_1-0__TIFF_LAMB93_D0${DEP}_2025-12-01.7z.0${MAIN_SPLIT}
+			mkdir -p ./$RASTER_DIR/$REGION/$DEPARTEMENT/$ZOOM_FOLDER
+			zip=./$DATA_DIR/$REGION/PLANIGN_1-0__TIFF_LAMB93_D0${DEP}_2025-12-01.7z.0${MAIN_SPLIT}
 
 			if [[ -e $zip && -x $zip && -r $zip ]]
 			then
-				7zz -y -r e $zip -o./$REGION/$DEPARTEMENT/$ZOOM_FOLDER PLANIGN${ZOOM_LEVEL}_*_L93.tif;
+				7zz -y -r e $zip -o./$RASTER_DIR/$REGION/$DEPARTEMENT/$ZOOM_FOLDER PLANIGN${ZOOM_LEVEL}_*_L93.tif;
 			else
-				echo "Zip not found in WORKDIR: $WORKDIR"
+				echo "Zip not found in WORKDIR: IGN_DATA/$REGION"
 			fi
 		done;
 	done;
 }
-
-if [[ ! -d $REGION ]]
-then
-	unzip_rasters;
-fi
 
 
 function webmercator_tiled(){
@@ -95,13 +106,13 @@ function webmercator_tiled(){
 	INDEX_BUFFER=$2
 	INDEX_CROP=$3
 	VRT=$4
-	CLIPPER="clipper_${BASENAME}.geojson"
-	
+	CLIPPER="${INDEX_DIR}/clipper_${BASENAME}.geojson"
+
 	REGION=$(echo ${INPUT_LAYER} | cut -d/ -f 8)
 	DEPARTEMENT=$(echo ${INPUT_LAYER} | cut -d/ -f 9)
 	ZOOM_LEVEL=$(echo ${INPUT_LAYER} | cut -d/ -f 10)
 	RASTER=$(echo ${INPUT_LAYER} | cut -d/ -f 11)
-	
+
 	echo -e "\nRegion: ${REGION}"
 	echo "Departement: ${DEPARTEMENT}"
 	echo "Zoom level: ${ZOOM_LEVEL}"
@@ -126,14 +137,14 @@ function webmercator_tiled(){
 	  -overwrite \
 	  $VRT \
 	  $REPROJECTED_BUFFERD;
-	
+
 	echo -e "cropping back to file extent: TIFF ${BASENAME}"
-	
+
 	if [[ -f $CLIPPER ]]
 	then
 		rm -rf $CLIPPER;
 	fi
-	
+
 	ogr2ogr \
 		-t_srs EPSG:3857 \
 		-of 'GeoJSON' \
@@ -141,7 +152,7 @@ function webmercator_tiled(){
 		$INDEX_CROP \
 		-where "location='${INPUT_LAYER}'" \
 		-nln 'clipper'
-		
+
 	Xmin=$(ogrinfo $CLIPPER clipper -json | jq -r '.layers[0].geometryFields[0].extent[0]');
 	Ymax=$(ogrinfo $CLIPPER clipper -json | jq -r '.layers[0].geometryFields[0].extent[3]');
 	Xmax=$(ogrinfo $CLIPPER clipper -json | jq -r '.layers[0].geometryFields[0].extent[2]');
@@ -154,29 +165,33 @@ function webmercator_tiled(){
 	  -co PREDICTOR=$PREDICTOR \
 	  -co ZLEVEL=$COMPRESS_LEVEL \
 	  -co TILED=YES \
-      -co BLOCKXSIZE=$BLOCKSIZE \
-      -co BLOCKYSIZE=$BLOCKSIZE \
+	  -co BLOCKXSIZE=$BLOCKSIZE \
+	  -co BLOCKYSIZE=$BLOCKSIZE \
 	  -co BIGTIFF=YES \
 	  -co NUM_THREADS=$N_PROC \
 	  $REPROJECTED_BUFFERD \
 	  $REPROJECTED_CROPPED;
-	  
+
     # cleanup
 	if [[ -f $REPROJECTED_BUFFERD ]]
 	then
 		rm -rf $REPROJECTED_BUFFERD;
 	fi
-	
-#	if [[ -f $CLIPPER ]]
-#	then
-#		rm -rf $CLIPPER;
-#	fi
 
+	if [[ -f $CLIPPER ]]
+	then
+		rm -rf $CLIPPER;
+	fi
 }
-
 
 ###################################### MAIN JOB ############################################
 
+# creation d'un repertoir par region:
+# desarchiver la donnee raster IGN
+if [[ ! -d $REGION ]]
+then
+	unzip_rasters;
+fi
 
 # List all region tifs:
 # indexed array to host tif names:
@@ -189,11 +204,12 @@ PATTERN="PLANIGN19_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_L93.tif"
 for dep in ${DEPTS[@]}
 do
 	DEPARTEMENT=$(printf "%02d" $dep)
-	DEPARTEMENT=DEPARTEMENT_${dep}
-	SUBFOLDER_1="${REGION}"
-	SUBFOLDER_2="${DEPARTEMENT}"
+	DEPARTEMENT=DEPARTEMENT_${DEPARTEMENT}
+	SUBFOLDER_0=$RASTER_DIR
+	SUBFOLDER_1=$REGION
+	SUBFOLDER_2=$DEPARTEMENT
 	SUBFOLDER_3='ZOOM_19'
-	deptpath=$PWD/$SUBFOLDER_1/$SUBFOLDER_2/$SUBFOLDER_3
+	deptpath=$PWD/$SUBFOLDER_0/$SUBFOLDER_1/$SUBFOLDER_2/$SUBFOLDER_3
 	IDFTIFS+=($deptpath/$PATTERN)
 done;
 
@@ -221,8 +237,8 @@ ogr2ogr \
 	$INDEX_3857 \
 	$INDEX
 
-echo 'Creating Virtual Mosaic for all involved rasters.'
-# build a coherent virtual layer  
+echo -e '\nCreating Virtual Mosaic for all involved rasters.'
+# build a coherent virtual layer
 gdalbuildvrt -resolution highest $INPUT_VRT $(echo ${IDFTIFS[@]})
 
 echo -e '\nCreating Reprojected GeoTIFF Raster from input ...'
@@ -244,11 +260,12 @@ PATTERN="PLANIGN19_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_L93.tif"
 for dep in ${DEPTS[@]}
 do
 	DEPARTEMENT=$(printf "%02d" $dep)
-	DEPARTEMENT="DEPARTEMENT_${dep}"
-	SUBFOLDER_1="${REGION}"
-	SUBFOLDER_2="${DEPARTEMENT}"
+	DEPARTEMENT=DEPARTEMENT_${DEPARTEMENT}
+	SUBFOLDER_0=$RASTER_DIR
+	SUBFOLDER_1=$REGION
+	SUBFOLDER_2=$DEPARTEMENT
 	SUBFOLDER_3='ZOOM_19'
-	deptpath=$PWD/$SUBFOLDER_1/$SUBFOLDER_2/$SUBFOLDER_3
+	deptpath=$PWD/$SUBFOLDER_0/$SUBFOLDER_1/$SUBFOLDER_2/$SUBFOLDER_3
 	IDFTIFSWEB+=($deptpath/$PATTERN)
 done;
 
@@ -270,8 +287,8 @@ echo 'Adding index tree to tile index ...'
 shptree $TILEINDEX
 echo 'Adding index tree complete.'
 
+tree $RASTER_DIR/$REGION > "${INDEX_DIR}/${REGION}_tree.txt"
+
 chmod -R 775 **
 
-
 echo 'Creating tile index complete.';
-
