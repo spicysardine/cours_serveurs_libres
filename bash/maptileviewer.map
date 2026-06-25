@@ -1,0 +1,353 @@
+MAP
+	NAME "maptileviewer"
+	IMAGETYPE PNG24
+#	EXTENT 241856 6124877 402644 6307734
+	EXTENT -20037508.3427892 -20037508.3427892 20037508.3427892 20037508.3427892  # world webmercator
+	SIZE 1920 1920
+#	SIZE 2160 1440
+#	SIZE 3840 2160
+	DEBUG 1
+	PROJECTION
+		"init=epsg:3857"
+	END
+	UNITS METERS
+
+	OUTPUTFORMAT
+		NAME "png"
+		DRIVER "AGG/PNG"
+		MIMETYPE "image/png"
+		IMAGEMODE RGBA
+	END
+
+	WEB
+		TEMPLATE  '/var/www/html/htdocs/mapserver/mapweb/maptileviewer.html'
+		IMAGEPATH '/var/www/html/htdocs/mapserver/maptmp/' # filesystem path
+		IMAGEURL  '/htdocs/mapserver/maptmp/'              # web browser path
+		# Activate the layer as a WMS
+		METADATA
+			"wms_title" "WMS_MAPTILEVIEWER_RASTER"
+			"wms_srs"   "EPSG:3857"
+			"wms_enable_request" "*"
+		END
+	END
+
+    # ---------------- z08 ----------------
+    LAYER
+        NAME "maptileviewer_z08"
+        STATUS ON
+        TYPE RASTER
+        DATA "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_08_MOSAIC_3857.tif"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+		
+        MAXSCALEDENOM 3466742
+        MINSCALEDENOM 1733371
+    END	
+
+    # ---------------- z09 ----------------
+    LAYER
+        NAME "maptileviewer_z09"
+        STATUS ON
+        TYPE RASTER
+        DATA "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_09_MOSAIC_3857.tif"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+		
+        MAXSCALEDENOM 1733370
+        MINSCALEDENOM 866685
+    END	
+
+    # ---------------- z10 ----------------
+    LAYER
+        NAME "maptileviewer_z10"
+        STATUS ON
+        TYPE RASTER
+        DATA "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_10_MOSAIC_3857.tif"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+		
+        MAXSCALEDENOM 866684
+        MINSCALEDENOM 433342
+    END	
+
+    # ---------------- z11 ----------------
+    LAYER
+        NAME "maptileviewer_z11"
+        STATUS ON
+        TYPE RASTER
+        DATA "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_11_MOSAIC_3857.tif"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+		
+        MAXSCALEDENOM 433341
+        MINSCALEDENOM 216671
+    END	
+
+    # ---------------- z12 ----------------
+    LAYER
+        NAME "maptileviewer_z12"
+        STATUS ON
+        TYPE RASTER
+        DATA "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_12_MOSAIC_3857.tif"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+		
+        MAXSCALEDENOM 216670
+        MINSCALEDENOM 108335
+    END	
+
+    # ---------------- z13 ----------------
+    LAYER
+        NAME "maptileviewer_z13"
+        STATUS ON
+        TYPE RASTER
+        DATA "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_13_MOSAIC_3857.tif"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+		
+        MAXSCALEDENOM 108334
+        MINSCALEDENOM 54167
+    END	
+
+    # ---------------- z13 ----------------
+    LAYER
+        NAME "maptileviewer_z13"
+        STATUS ON
+        TYPE RASTER
+        DATA "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_13_MOSAIC_3857.tif"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+		
+        MAXSCALEDENOM 108334
+        MINSCALEDENOM 54167
+    END	
+
+    # ---------------- z14 ----------------
+    LAYER
+        NAME "maptileviewer_z14"
+        STATUS ON
+        TYPE RASTER
+        DATA "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_14_MOSAIC_3857.tif"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+		
+        MAXSCALEDENOM 54166
+        MINSCALEDENOM 27083
+    END	
+	
+    # ---------------- z15 ----------------
+    LAYER
+        NAME "maptileviewer_z15"
+        STATUS ON
+        TYPE RASTER
+        DATA "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_15_MOSAIC_3857.tif"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+		
+        MAXSCALEDENOM 27082
+        MINSCALEDENOM 13541
+    END	
+	
+    # ---------------- z16 ----------------
+    LAYER
+        NAME "maptileviewer_z16"
+		STATUS ON
+		TYPE RASTER
+		TILEINDEX "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_TILEINDEX_16.shp"    
+		TILEITEM "location"
+		TILESRS "src_srs"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+        MAXSCALEDENOM 13540
+        MINSCALEDENOM 6770
+    END
+
+    # ---------------- z17 ----------------
+    LAYER
+        NAME "maptileviewer_z17"
+		STATUS ON
+		TYPE RASTER
+		TILEINDEX "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_TILEINDEX_17.shp"    
+		TILEITEM "location"
+		TILESRS "src_srs"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+
+        MAXSCALEDENOM 6769
+        MINSCALEDENOM 3385
+    END
+
+    # ---------------- z18 ----------------
+    LAYER
+        NAME "maptileviewer_z18"
+		STATUS ON
+		TYPE RASTER
+		TILEINDEX "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_TILEINDEX_18.shp"    
+		TILEITEM "location"
+		TILESRS "src_srs"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		PROCESSING "NODATA=0"
+		OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+		
+        MAXSCALEDENOM 3384
+        MINSCALEDENOM 1692
+    END
+
+    # ---------------- z19 ----------------
+    LAYER
+        NAME "maptileviewer_z19"
+		STATUS ON
+		TYPE RASTER
+		TILEINDEX "/home/beetroot/Developer/GIS/rasters/IGN/IGN_REGIONS/IDF/IDF_TILEINDEX/IDF_TILEINDEX_19.shp"    
+		TILEITEM "location"
+		TILESRS "src_srs"
+		PROCESSING "BANDS=1,2,3"
+		PROCESSING "LOAD_FULL_RES_IMAGE=NO"
+		PROCESSING "USE_MASK_BAND=YES"
+		PROCESSING "RESAMPLE=BILINEAR"
+		PROCESSING "OVERSAMPLE_RATIO=2"
+		#PROCESSING "NODATA=0"
+		#OFFSITE 0 0 0
+		PROJECTION
+			"init=epsg:3857"
+		END
+		METADATA
+			"wms_title" "maptileviewer_wms"
+		END
+
+        MAXSCALEDENOM 1691
+        MINSCALEDENOM 0
+    END
+
+END
