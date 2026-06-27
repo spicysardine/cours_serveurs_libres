@@ -2,7 +2,7 @@
 
 #########################################
 # options de debuggage
-set -e -u -o pipefail  
+set -e -u -o pipefail
 
 #activer pour plus de debug
 #set -x
@@ -25,32 +25,12 @@ shopt -s extglob
 
 # variables et configuration I/O:
 WORKDIR=$(pwd)
+N_PROC=$(nproc)
 SRS_IN=2154
 SRS_OUT=3857
 DATA_DIR='IGN_DATA'
 RASTER_DIR='IGN_REGIONS'
-REGION='IDF'
-INDEX_DIR="${RASTER_DIR}/${REGION}/${REGION}_TILEINDEX"
-BASENAME=$REGION
-INPUT_VRT="${INDEX_DIR}/${BASENAME}.vrt"
 
-# variables de controle de flux:
-#DEPTS=(75 77 78 91 92 93 94 95)
-ZOOM_LEVELS=({08..19})
-
-# GDAL configuration knobs 
-RESAMPLE_ALGO=cubic
-COMPRESS_ALGO=DEFLATE
-COMPRESS_LEVEL=7
-PREDICTOR=2
-N_PROC=$(nproc)
-BLOCKSIZE=512
-WARP_MEMORY=100
-GDAL_MEMORY=100
-JOBS=12
-
-export RESAMPLE_ALGO COMPRESS_ALGO COMPRESS_LEVEL INDEX_DIR WORKDIR SRS_IN
-export PREDICTOR BLOCKSIZE WARP_MEMORY N_PROC JOBS GDAL_MEMORY SRS_OUT
 
 ###################################### functions ############################################
 
@@ -60,7 +40,7 @@ function download_zip(){
 	DEP=$1
 	SPLITS=({01..10})
 	BASE_URL='https://data.geopf.fr/telechargement/download/PLANIGN'
-	
+
 	if [[ ! -d $DATA_DIR/$REGION ]]
 	then
 		mkdir -p $DATA_DIR/$REGION;
@@ -91,7 +71,7 @@ function download_zip(){
 		else
 			echo ' Archive split exists. skip...'
 		fi
-	done;		
+	done;
 }
 
 
@@ -99,14 +79,20 @@ function download_zip(){
 # desarchiver la donnee raster IGN
 function unzip_rasters(){
 	
+	ACTIVATE_DOWNLOAD=$1
 	MAIN_SPLIT=01
-	
+
 	#telecharger puis desarchiver les rasters IGN du department:
 	for DEP in "${DEPTS[@]}"
 	do
 		#download target department data zip:
-		download_zip "$DEP"
-		
+		if [[ $ACTIVATE_DOWNLOAD == 'ZIP_DL' ]]
+                then
+			download_zip "$DEP"
+                else
+			echo "\n Download not requested for Departement ${DEP} ... Skipping\n"
+                fi
+
 		#extract raster data from zip:
 		DEPARTEMENT=$(printf "%02d" "$DEP")
 		DEPARTEMENT=DEPARTEMENT_${DEPARTEMENT}
@@ -126,20 +112,20 @@ function unzip_rasters(){
 				echo "Zip not found in WORKDIR: ${DATA_DIR}/${REGION}"
 			fi
 		done;
-		
+
 		echo -e "\n ******************************\n"
 	done;
 }
 
 
 # this function takes in a zoom level and returns
-# the pixel resolution in meters per pixel m/px in 
+# the pixel resolution in meters per pixel m/px in
 # Web Mercator EPSG 3857
 function zoom_resolver(){
 
 	#input zoom level to resolve
 	ZOOM=$1
-	
+
 	# Piking the right resolution for SRS_OUT:
 	case $ZOOM in
 	08) ZOOM_RESOLUTION=611.49622628141
@@ -149,26 +135,26 @@ function zoom_resolver(){
 		echo $ZOOM_RESOLUTION
 		;;
 	10) ZOOM_RESOLUTION=152.8740565703525
-		echo $ZOOM_RESOLUTION	
-		;;		
+		echo $ZOOM_RESOLUTION
+		;;
 	11) ZOOM_RESOLUTION=76.43702828517625
 		echo $ZOOM_RESOLUTION
-		;;		
+		;;
 	12) ZOOM_RESOLUTION=38.21851414258813
 		echo $ZOOM_RESOLUTION
-		;;		
+		;;
 	13) ZOOM_RESOLUTION=19.109257071294063
 		echo $ZOOM_RESOLUTION
-		;;		
+		;;
 	14) ZOOM_RESOLUTION=9.554628535647032
 		echo $ZOOM_RESOLUTION
-		;;		
+		;;
 	15) ZOOM_RESOLUTION=4.777314267823516
 		echo $ZOOM_RESOLUTION
-		;;		
+		;;
 	16) ZOOM_RESOLUTION=2.388657133911758
 		echo $ZOOM_RESOLUTION
-		;;		
+		;;
 	17) ZOOM_RESOLUTION=1.194328566955879
 		echo $ZOOM_RESOLUTION
 		;;
@@ -184,13 +170,14 @@ function zoom_resolver(){
 
 # creates a reprojected mosaic from a vrt
 function tile_merger(){
+
 	#virtual layer to reproject and mosaic:
 	VRT=$1
 	ZOOM=$2
 	DIRNAME=$(dirname "$VRT")
 	REPROJECTED_MERGED="${DIRNAME}/${REGION}_${ZOOM}_MOSAIC_${SRS_OUT}.tif"
 	ZOOM_RESOLUTION=$(zoom_resolver $ZOOM)
-	
+
 	#reprojection job:
 	gdalwarp \
 	  -multi \
@@ -198,6 +185,7 @@ function tile_merger(){
 	  -tr $ZOOM_RESOLUTION $ZOOM_RESOLUTION \
 	  -tap \
 	  -r $RESAMPLE_ALGO \
+          -dstalpha \
 	  -s_srs EPSG:"$SRS_IN" \
 	  -t_srs EPSG:"$SRS_OUT" \
 	  -wo SOURCE_EXTRA=16 \
@@ -248,6 +236,7 @@ function tile_clipper(){
 	  -tr $ZOOM_RESOLUTION $ZOOM_RESOLUTION \
 	  -tap \
 	  -r $RESAMPLE_ALGO \
+          -dstalpha \
 	  -s_srs EPSG:"$SRS_IN" \
 	  -t_srs EPSG:"$SRS_OUT" \
 	  -cutline "$INDEX_BUFFER" \
@@ -305,7 +294,7 @@ function tile_clipper(){
 
     # cleanup
     echo 'Triggering cleanup';
-    
+
     # cleanup reprojected buffer rasters:
 	if [[ -f $REPROJECTED_BUFFERED ]]
 	then
@@ -324,7 +313,7 @@ function tile_clipper(){
 # shards preparing them to tile indexing
 function shards_builder(){
 	
-	#create a reference to argument array	
+	#create a reference to argument array
 	declare -n REGTIFS_SRC="$1"
 	#declare a read only indexed array and copy values:
 	declare -ar REGTIFS=("${REGTIFS_SRC[@]}")
@@ -335,9 +324,9 @@ function shards_builder(){
 	INDEX_BUFFERED="${INDEX_DIR}/STAGED_${REGION}_BUFFERED.shp"
 	INDEX_SRS_OUT="${INDEX_DIR}/STAGED_${REGION}_${SRS_OUT}.shp"
 	BUFFER=50
-	
+
 	echo -e '\n Building indexes for all involved rasters.'
-	
+
 	# build a tile index for buffered warping/reprojection:
 	gdaltindex \
 		-t_srs EPSG:"$SRS_IN" \
@@ -355,7 +344,7 @@ function shards_builder(){
 	  -sql "SELECT ST_Buffer(geometry, ${BUFFER}) AS geometry, * FROM $(basename $INDEX .shp)"
 
 	echo -e '\n Building reprojected index for clipping purposes.'
-	
+
 	# reproject the index into $SRS_OUT
 	ogr2ogr \
 		-s_srs EPSG:"$SRS_IN" \
@@ -376,14 +365,14 @@ function shards_builder(){
 	 	::: "${REGTIFS[@]}";
 
 	echo -e '\n Raster creation complete.'
-	
+
 	echo -e '\n Triggering Raw data and index tools cleanup';
 
 	for tif in "${REGTIFS[@]}"
 	do
 		rm -rf "$tif";
 	done;
-	
+
 	#preparing indexes directories
 	INDEX_DIRNAME=$(dirname "$INDEX")
 	INDEX_BUFFERED_DIRNAME=$(dirname "$INDEX_BUFFERED")
@@ -393,23 +382,23 @@ function shards_builder(){
 	INDEX_BUFFERED_BASENAME=$(basename "$INDEX_BUFFERED" .shp)
 	INDEX_SRS_OUT_BASENAME=$(basename "$INDEX_SRS_OUT" .shp)
 	#deleting complete index suite
-	rm -rf $INDEX_DIRNAME/$INDEX_BASENAME.{shp,dbf,qix,shx,prj} 
+	rm -rf $INDEX_DIRNAME/$INDEX_BASENAME.{shp,dbf,qix,shx,prj}
 	rm -rf $INDEX_BUFFERED_DIRNAME/$INDEX_BUFFERED_BASENAME.{shp,dbf,qix,shx,prj}
 	rm -rf $INDEX_SRS_OUT_DIRNAME/$INDEX_SRS_OUT_BASENAME.{shp,dbf,qix,shx,prj}
-	
+
 	echo -e '\n Cleanup complete.';
 }
 
 
-# function that builds index of all 
+# function that builds index of all
 # reprojected shards by shards_builder()
 function tileindex_builder() {
 	
 	ZOOM=$1
 	TILEINDEX=$2
-	
+
 	declare -a REGTIFS_SRC_OUT
-	
+
 	echo -e '\n Building tileindex of staged rasters'
 
 	PATTERN="PLANIGN${ZOOM}_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_L93_${SRS_OUT}.tif"
@@ -433,7 +422,7 @@ function tileindex_builder() {
 		"${REGTIFS_SRC_OUT[@]}"
 
 	echo ' Adding index tree to tile index ...'
-	shptree "$TILEINDEX"
+	shptree "$TILEINDEX" 2> /dev/null
 	echo ' Adding index tree complete.'
 
 	echo " Successfully added these rasters to Mapservers Tile Index:"
@@ -448,21 +437,46 @@ function tileindex_builder() {
 
 ###################################### MAIN JOB ############################################
 
+# Main configuration variables:
+REGION='IDF'
+BASENAME=$REGION
+INDEX_DIR="${RASTER_DIR}/${REGION}/${REGION}_TILEINDEX"
+INPUT_VRT="${INDEX_DIR}/${BASENAME}.vrt"
+
+# GDAL configuration knobs
+RESAMPLE_ALGO=cubic
+COMPRESS_ALGO=DEFLATE
+COMPRESS_LEVEL=7
+PREDICTOR=2
+BLOCKSIZE=512
+WARP_MEMORY=50
+GDAL_MEMORY=50
+JOBS=17
+
+# export references to the parallel subshells:
+export RESAMPLE_ALGO COMPRESS_ALGO COMPRESS_LEVEL INDEX_DIR WORKDIR SRS_IN
+export PREDICTOR BLOCKSIZE WARP_MEMORY N_PROC JOBS GDAL_MEMORY SRS_OUT
+
 echo -e "\n =================== Starting raw data extraction ... ==========================\n"
-# desarchiver la donnee raster IGN
+# variables de controle de flux:
 DEPTS=(75 77 78 91 92 93 94 95)
-#DEPTS=(77)
+#DEPTS=(75)
+ 
+ZOOM_LEVELS=({08..19})
 
-#unzip_rasters
+#restreindre a la generation des indexes
+#et les niveaux de zoom de bas niveau: 
+#mettre YES pour restrindre
+BUILD_TINDEX_ONLY=
 
-# creation d'un repertoir d’indexation par region:
+# desarchiver la donnee raster IGN
+unzip_rasters ZIP_DL;
+
+# create index folder
 mkdir -p $INDEX_DIR
 
 echo -e "\n =================== Starting main jobs ==========================\n"
 
-ZOOM_LEVELS=({08..19})
-#
-BUILD_TINDEX_SWITCH=BUILD_TINDEX_ONLY
 
 for ZOOM_LEVEL in "${ZOOM_LEVELS[@]}"
 do
@@ -474,7 +488,7 @@ do
 	declare -a REGTIFS
 	# create input tile search pattern
 	PATTERN="PLANIGN${ZOOM_LEVEL}_[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]_L93.tif"
-	
+
 	#fill an array with zoom level shards:
 	for DEP in "${DEPTS[@]}"
 	do
@@ -484,38 +498,39 @@ do
 		deptpath=$WORKDIR/$RASTER_DIR/$REGION/$DEPARTEMENT/"$ZOOM_FOLDER"
 		REGTIFS+=("$deptpath"/$PATTERN)
 	done;
-	
+
 	echo -e '\n Creating Virtual Mosaic for all involved rasters.'
 	# build a coherent virtual layer
 	# echo "${REGTIFS[@]}"
-	gdalbuildvrt -resolution highest $INPUT_VRT "${REGTIFS[@]}"
+	gdalbuildvrt -addalpha -resolution highest $INPUT_VRT "${REGTIFS[@]}"
 
 	if [[ $ZOOM_LEVEL == 0[8-9] || $ZOOM_LEVEL == 1[0-5] ]]
 	then
-		if [[ -z "$BUILD_TINDEX_SWITCH" ]]
+		if [[ "$BUILD_TINDEX_ONLY" == 'YES' ]]
 		then
+			echo -e "\n Building Tileindex Only. Skipping Merge ..."
+		else
 			# tile merge here
 			echo -e "\n Creating Mosaic for Zoom ${ZOOM_LEVEL} for rasters ...\n"
 			for tif in "${REGTIFS[@]}"
 			do
 				echo $(basename "$tif");
-			done;	
-			
-			tile_merger $INPUT_VRT $ZOOM_LEVEL;
-		else
-			echo -e "\n Building Tileindex Only. Skipping Merge ..."
+			done;
+
+		        tile_merger $INPUT_VRT $ZOOM_LEVEL;
+
 		fi
 	elif [[ $ZOOM_LEVEL == 1[6-9] ]]
 	then
 		#======================  Tileindex Reprojected Shards building ====================#
-		if [[ -z "$BUILD_TINDEX_SWITCH" ]]
+		if [[ "$BUILD_TINDEX_ONLY" == 'YES' ]]
 		then
-			shards_builder REGTIFS $ZOOM_LEVEL $INPUT_VRT;
-		else
 			echo -e "\n Building Tileindex Only. Skipping Shards Reprojection ..."
+		else
+			shards_builder REGTIFS $ZOOM_LEVEL $INPUT_VRT;
 		fi
 		#============================  Shards Reprojection ends ===========================#
-		
+
 		#===========================  tile indexing here ==================================#
 		tileindex_builder $ZOOM_LEVEL "$TILEINDEX"
 		#=============================== indexing end =====================================#
@@ -524,14 +539,14 @@ do
 		exit -9;
 	fi
 
-	#unsetting global arrays:	
+	#unsetting global arrays:
 	unset REGTIFS
 	#adding access to Apache (user is in the apache group)
 	chmod -R 775 ./**
-	
+
 
 	echo -e "\n ============== End ==================\n";
-	
+
 done;
 
 echo -e '\n creating project tree'
