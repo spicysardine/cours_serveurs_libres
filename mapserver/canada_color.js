@@ -50,21 +50,6 @@ const MAPBOX_TOKEN = 'get yourself a token from mapbox';
 const MAPBOX_MAPID_3D_BUILDINGS = 'cla3y3gce003g15o4xza15zz0';
 const MAPBOX_MAPID_NIGHTMAPPING = 'ck478t76k1ro11ct2jsl5qtmt';
 
-// Night Mapping
-let map_attr_obj_nmp = {attribution: 'MapBox Night-Mapping', maxZoom: MAX_ZOOM_LEVEL, maxNativeZoom: MAX_SCALEUP_ZOOM_LEVEL};
-// adding id to tile options object
-map_attr_obj_nmp['id'] = MAPBOX_MAPID_NIGHTMAPPING;
-let mapbox_url_nmp   = `https://api.mapbox.com/styles/v1/spicy/{id}/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`;
-let tile_nmp = L.tileLayer(mapbox_url_nmp, map_attr_obj_nmp);
-tile_nmp.addTo(map);
-
-// 3D buildings
-let map_attr_obj_3db = {attribution: 'MapBox 3D Buildings', maxZoom: MAX_ZOOM_LEVEL, maxNativeZoom: MAX_SCALEUP_ZOOM_LEVEL};
-map_attr_obj_3db['id'] = MAPBOX_MAPID_3D_BUILDINGS;
-let mapbox_url_3db   = `https://api.mapbox.com/styles/v1/spicy/{id}/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`;
-let tile_3db = L.tileLayer(mapbox_url_3db, map_attr_obj_3db);
-//tile_3db.addTo(map);
-
 
 // Local WMS layers:
 let canada_raster = L.tileLayer.wms('/cgi-bin/mapserv?map=CANADA_COLOR_WEB', {
@@ -168,7 +153,7 @@ control_scale.addTo(map);
 let ctrl_options_layers = {collapsed: true};
 
 //basemaps
-let basemaps = {'MapBox 3D Buildings': tile_3db, 'MapBox Night-Mapping': tile_nmp, 'OpenStreetMap': tile_osm };
+let basemaps = {'OpenStreetMap': tile_osm };
 
 //overlays
 let overlays = {
